@@ -1,35 +1,56 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import "./App.css";
+import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import { saveAs } from "file-saver";
 
+const ffmpeg = createFFmpeg({
+   log: true 
+});
 function App() {
-  const [count, setCount] = useState(0)
+  const [video, setVideo] = useState();
+  const [name, setName] = useState();
 
+  const init = async () => {
+    await ffmpeg.load();
+  };
+
+  const setVid = (e) => {
+    setVideo(e.target.files?.item(0));
+    setName(e.target.files[0].name);
+  };
+  const convertToGif = async () => {
+    await ffmpeg.FS("writeFile", name, await fetchFile(video));
+    await ffmpeg.run(
+      "-i",
+      name,
+      "-t",
+      "2.5",
+      "-ss",
+      "2.0",
+      "-f",
+      "gif",
+      "output.gif"
+    );
+    const data = ffmpeg.FS("readFile", "output.gif");
+    const url = URL.createObjectURL(
+      new Blob([data.buffer], { type: "image/gif" })
+    );
+    saveAs(url, "output.gif");
+  };
+
+  useEffect(() => {
+    init();
+  }, []);
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="App">
+      <header className="App-header">
+        {video && (
+          <video controls width="250" src={URL.createObjectURL(video)}></video>
+        )}
+        <input type="file" onChange={(e) => setVid(e)} />
+        <button onClick={convertToGif}>Click to convert video to GIF</button>
+      </header>
+    </div>
+  );
 }
-
-export default App
+export default App;
